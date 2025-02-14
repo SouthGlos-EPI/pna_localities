@@ -1,0 +1,276 @@
+---
+title: "`r paste(params$locality, ' PNA Locality Profile')`"
+format: 
+    docx:
+     reference-doc: ref_doc.docx
+params: 
+  locality: "Kingswood"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, comment = FALSE, message = FALSE)
+
+locality <- params$locality
+data_refresh_month <- "January 2025"
+
+library(here) #project directory working
+
+# read in script which carries out data prep (filtering, manipulation, etc)
+source(here("data_prep.R"))
+
+# Determine LA of chosen locality
+local_authority <- unique(filter(lsoa_loc_lookup, 
+                                 pna_locality == locality)$local_authority)
+
+# Function to replace 0s in text with "no"
+text_zero <- function(x){
+  if (x == 0) {"no"} else {x}
+}
+
+# Functions to handle changes between having 1 or multiple of a service
+pluralise_verb <- function(count) {
+  if (count == 1) {
+    "is"
+  } else {
+    "are"
+  }
+}
+
+pluralise_noun <- function(count, singular, plural = NULL) {
+  
+    if (is.null(plural)) {
+    # Handle irregular plurals like 'pharmacy' to 'pharmacies'
+    if (grepl("y$", singular)) {
+      plural <- sub("y$", "ies", singular)
+    } else {
+      plural <- paste0(singular, "s")
+    }
+    }
+  
+  if (count == 1) {
+    singular
+  } else {
+    plural
+  }
+}
+
+```
+
+## Locality Overview
+
+```{r}
+
+# Compute values for text
+
+# Total Locality population
+loc_pop <- unique(filter(age_sex_locality, pna_locality == locality)$total_pop)
+
+# Age/sex info
+perc_fem <- round_half_up(sum(
+    filter(age_sex_locality, 
+           pna_locality == locality,
+           sex == "Female")$pop
+    )/loc_pop*100, 1
+  )
+
+perc_male <- 100 - perc_fem
+
+perc_over65 <- round_half_up(sum(
+  filter(age_sex_locality, 
+         pna_locality == locality, 
+         age_band_5y %in% c("65-69", "70-74", "75-79", "80-84", "85-89", "90+"))$pop
+  )/loc_pop*100, 1
+  )
+
+# Deprivation
+quint1_local <- round_half_up(filter(
+  dep_local, 
+  pna_locality == locality,
+  imd_quintile_local == "1")$pop
+    /loc_pop*100, 1
+  )
+
+quint1_national <- round_half_up(filter(
+  dep_national, 
+  pna_locality == locality,
+  imd_quintile_national == "1")$pop
+    /loc_pop*100, 1
+  )
+
+```
+
+
+`r locality` PNA Locality in `r local_authority` has an estimated population of `r format(loc_pop, big.mark = ",")` as of `r max(pops$year)`. Summary statistics:
+
+* `r perc_fem`% of its residents are female, `r perc_male`% are male.
+* `r perc_over65`% are 65 and older.
+* `r quint1_local`% of its population live in the 20% most deprived areas of `r local_authority`.
+* `r quint1_national`% live in the 20% most deprived areas of England.
+
+**Figure X:** `r locality` PNA Locality population breakdown by age & sex, compared to `r local_authority`, mid-`r max(pops$year)` estimates.
+```{r}
+#| fig-width: 8
+#| fig-height: 5
+
+age_sex1 <- age_sex_locality %>% 
+  filter(pna_locality == locality) %>% 
+  mutate(perc = if_else(sex == "Male", perc*(-1), perc))
+
+age_sex2 <- age_sex_la %>% 
+  filter(lad_2021_name == local_authority) %>% 
+  mutate(perc = if_else(sex == "Male", perc*(-1), perc))
+
+ggplot(data= age_sex1,
+       aes(x = age_band_5y)) + 
+  
+  # plot locality
+  geom_bar(aes(y = perc, fill = sex), 
+           stat = "identity", 
+           colour = "black",
+           linewidth = 0.2,
+           width = 0.8) +
+  
+  # plot local authority
+  geom_line(data = age_sex2,
+            aes(y = perc, group = sex, color = sex),
+            size = 1) +
+  
+  geom_point(data = age_sex2,
+            aes(y = perc, group = sex, color = sex, shape = sex),
+            size = 3) +
+  
+  #aesthetics
+  scale_fill_manual(values = palette[1:2], 
+                    guide = guide_legend(reverse = TRUE,
+                                          title.position="top", title.hjust = 0.5)) +
+  
+  scale_color_manual(values = palette[3:4], 
+                     guide = guide_legend(reverse = TRUE,
+                                          title.position="top", title.hjust = 0.5)) + 
+  
+  scale_shape_manual(values = c(16, 17), 
+                     guide = guide_legend(reverse = TRUE)) +
+  
+  scale_y_continuous(labels = abs, breaks = seq(-100, 100, by = 1)) +
+  theme_bnssg() +
+  
+  labs(x = "Age group",
+       y = "Percentage of population (%)",
+       color = local_authority,
+       shape = local_authority,
+       fill = locality) +
+  
+  coord_flip()
+
+
+```
+Source: ONS small area population estimates.
+
+\n
+
+## Overview of Pharmacies
+
+```{r}
+
+# Compute values for text
+loc_pharm_total <- filter(pharm_types, pna_locality == locality)$total
+loc_disp_prac_branch <- filter(pharm_types, pna_locality == locality)$disp_prac_branch
+loc_pharm_first <- filter(pharm_types, pna_locality == locality)$pharmacy_first
+loc_pharm_chain <- filter(pharm_types, pna_locality == locality)$chain
+loc_pharm_independ <- filter(pharm_types, pna_locality == locality)$independ
+loc_pharm_40h <- filter(pharm_types, pna_locality == locality)$x40_hour_contract
+loc_pharm_100h <- filter(pharm_types, pna_locality == locality)$x100_hour_contract
+loc_pharm_ds <- filter(pharm_types, pna_locality == locality)$distance_selling
+loc_pharm_dac <- filter(pharm_types, pna_locality == locality)$dac
+loc_pharm_lps <- filter(pharm_types, pna_locality == locality)$lps
+
+# Create list for chains, to display only if there are any
+chain_list <- if (loc_pharm_chain != 0) {
+  
+  list <- pharm_chains %>%
+    filter(pna_locality == locality) %>% 
+    mutate(list = paste0("\n  - ", n, " by ", name)) %>%
+    pull(list) %>%
+    paste(collapse = "\n")
+  
+  paste0(":\n", list)
+  
+} else {"."}
+  
+
+# Create list for 100 hour pharmacies, to display only if there are any
+hr100_list <- if (loc_pharm_100h > 1) {
+  
+  list <- pharm_100h %>%
+    filter(pna_locality == locality) %>% 
+    mutate(list = paste0("\n  - ", name_and_address)) %>%
+    pull(list) %>%
+    paste(collapse = "\n")
+  
+  paste0("The 100-hour pharmacies are:\n", list)
+  
+} else if (loc_pharm_100h == 1) {"."
+  
+    list <- pharm_100h %>%
+    filter(pna_locality == locality) %>% 
+    mutate(list = paste0("\n  - ", name_and_address)) %>%
+    pull(list) %>%
+    paste(collapse = "\n")
+  
+  paste0("The 100-hour pharmacy is ", list, ".")
+  
+} else {""}
+
+```
+
+As of `r data_refresh_month` in `r locality` PNA locality, there are `r loc_pharm_total` pharmacies and `r text_zero(loc_disp_prac_branch)` `r pluralise_noun(loc_disp_prac_branch, "practice")` or `r pluralise_noun(loc_disp_prac_branch, "branch of a practice", "branches of practices")` with dispensing doctors providing drugs and appliances to their own patients.
+
+Of the `r loc_pharm_total` pharmacies, there are:
+
+* `r loc_pharm_first` providing Pharmacy First services.
+* `r text_zero(loc_pharm_independ)` independent `r pluralise_noun(loc_pharm_independ, "pharmacy")`.
+* `r text_zero(loc_pharm_chain)` `r pluralise_noun(loc_pharm_chain, "pharmacy")` owned by national pharmacy chains`r chain_list`
+* `r text_zero(loc_pharm_40h)` 40-hour `r pluralise_noun(loc_pharm_40h, "pharmacy")` and `r text_zero(loc_pharm_100h)` 100-hour `r pluralise_noun(loc_pharm_100h, "pharmacy")`. `r hr100_list`
+* `r text_zero(loc_pharm_ds)` distance-selling `r pluralise_noun(loc_pharm_ds, "pharmacy")`
+* `r text_zero(loc_pharm_lps)` `r pluralise_noun(loc_pharm_lps, "pharmacy")` with local pharmaceutical services contracts
+* `r text_zero(loc_pharm_dac)` dispensing appliance `r pluralise_noun(loc_pharm_dac, "contractor")` (DAC).
+
+Table X shows the provision in `r locality` since the last PNA was published. There is no national expectation or standard on the ratio of pharmacies to population. These ratios do not consider the size and staffing of pharmacies which will determine the size of the population they are able to serve.
+
+\n
+
+## Access to Essential Services
+
+**Figure X:** `r locality` PNA Locality pharmacy coverage across the week.
+```{r}
+#| fig-width: 8
+#| fig-height: 5
+
+pharm_hours %>% 
+  filter(pna_locality == locality) %>% 
+
+ggplot(aes(y = day_of_week, 
+           xmin = open_time, 
+           xmax = close_time)) +
+  
+  geom_rect(aes(xmin = open_time, 
+                xmax = close_time,
+                ymin = as.numeric(day_of_week) - 0.4,
+                ymax = as.numeric(day_of_week) + 0.4),
+            fill = palette[1],
+            alpha = 0.3) +
+  
+  scale_x_datetime(date_labels = "%H:%M", 
+                   date_breaks = "2 hours") +
+  
+  labs(x = "Time of day", 
+       y = "Day of the week") +
+  theme_bnssg()+
+  theme(panel.grid.minor.x = element_line(linetype = 'dotted', linewidth = 1))
+
+
+```
+
+Note: The darker the bar, the more pharmacies are open in the area at those times.
+
+Source: ?
