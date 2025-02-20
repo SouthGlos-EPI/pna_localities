@@ -20,45 +20,42 @@ library(readxl) #read in excel tables
 library(lubridate) #working with dates
 library(hms) #working with time
 library(knitr) #kable tables, inserting images
-library(PHEindicatormethods) #rates, confidence intervals, etc
 library(here) #project directory
 library(tidylog) #log results of tidyverse functions
 
-## BNSSG healthier together colour palette?
-palette <- c("#1C1F63", "#10CFFB" , "#9EF101","#8605E4",
-               "#045EDA", "#E16CFF", "#008247")
-               
-## BNSSG ggplot theme
-theme_bnssg <- function(base_size = 12, base_family = "sans",base_colour = "black"){theme_bw() %+replace% theme(
+# set the month that pharmacy data relates to
+pharm_data_month <- "January 2025"
+
+## colour palette
+palette <- c("#1C1F63", "#10CFFB" , "#9EF101","#8605E4")
+
+## plot custom themes
+custom_theme <- function(){theme_minimal() %+replace% theme(
+  
+  # Default text
+  text = element_text(family = "sans"),
   
   #Axis titles & text
-  axis.title.x = element_text(size = 16, color = '#1c1f63', face = 'bold', family = "sans", 
+  axis.title.x = element_text(size = 14, face = "bold",
                               margin = margin(t = 0, r = 20, b = 0, l = 0)), 
-  axis.title.y = element_text(size = 16, color = '#1c1f63', angle = 90, face = 'bold', 
-                              family = "sans", margin = margin(t = 0, r = 20, b = 0, l = 0)),
-  axis.text = element_text(size = 12,  family = "sans", color = 'black'), 
+  axis.title.y = element_text(size = 14, face = "bold", angle = 90,
+                              margin = margin(t = 0, r = 20, b = 0, l = 0)), 
+  axis.text = element_text(size = 12),
   
   #Plot box and grid
-  panel.border = element_blank(), 
-  panel.grid.major.y = element_blank(), 
-  panel.grid.major.x = element_line(linetype = 'dotted', size = 1), 
-  panel.grid.minor = element_blank(), 
+  panel.grid = element_blank(),
+  panel.grid.major.x = element_line(linetype = "dotted", size = 1, color = "grey80"), 
   
-  #Legend
-  legend.justification='left', 
-  legend.direction='horizontal', 
+  # Legend
+  legend.justification = "left", 
+  legend.direction = "horizontal", 
   legend.position = "top", 
   legend.location = "plot",
-  legend.text = element_text(size = 12, family = "sans"),
-  legend.title = element_text(size = 12, family = "sans", face="bold", color = "grey20"),
-  
-  # Title
-  plot.title = element_text(size = 16, color = '#1c1f63', face="bold", 
-                            margin = margin(b = 10, t=10), hjust=0),
-  plot.title.position = "plot"
+  legend.title = element_text(face="bold", color = "grey20", size = 12),
+  legend.text = element_text(size = 12)
 ) 
 }
-
+               
 # no scientific notation
 options(scipen = 999)
 
@@ -82,7 +79,9 @@ pharmacies <- read_xlsx(here("Data", "20250129 Snapshot CP lists BNSSG.xlsx"),
                         skip = 1) %>% 
   clean_names %>% 
   mutate(postcode = str_remove_all(postcode, " ")) %>% 
-  left_join(pc_lsoa_loc_lookup, by = "postcode")
+  left_join(pc_lsoa_loc_lookup, by = "postcode") %>% 
+  relocate(ods_code, contractor_name, "name" = trading_name_if_different, icb,
+           health_and_wellbeing_board:lsoa_2021_code)
 
 
 ## Dispensing practices
@@ -93,7 +92,15 @@ disp_prac <- read_xlsx(here("Data", "20250117 Dispensing Practices BNSSG.xlsx"))
 
 
 ## Read in dispensing data (collated in dispensing_data R script)
-disp_data <- readRDS(here("Data", "dispensing_data.rds"))
+disp_data <- readRDS(here("Data", "dispensing_data.rds")) %>% 
+  
+  # Join Locality lookup with postcode (not pharmacy codes as these change)
+  mutate(postcode = str_remove_all(postcode, " ")) %>% 
+  left_join(pc_lsoa_loc_lookup) %>% 
+  drop_na(pna_locality) 
+
+## Dispensing data for England and SW - done manually in Excel
+disp_eng_sw <- read_xlsx(here("Data", "dispensing_data_England_SW.xlsx"))
 
 ## Populations data
 # Loop reading in pops by year of data - source: ONS
@@ -256,7 +263,6 @@ disp_prac_branch <- disp_prac %>%
 # List of pharmacy chains provided by ChatGPT, may be more, check local data
 
 pharm_chains <- pharmacies %>% 
-  rename("name" = trading_name_if_different) %>% 
   filter(name %in%
            c("Boots Pharmacy", "Well Pharmacy", "Rowlands Pharmacy", "Day Lewis Pharmacy", 
              "Cohens Chemist", "Jhoots Pharmacy", "PillBox Chemists", "Tesco Pharmacy", 
@@ -272,7 +278,7 @@ pharm_chains <- pharmacies %>%
 pharm_types <- pharmacies %>% 
   
   # add in pharmacy ownership flags
-  mutate(chain = if_else(trading_name_if_different %in% pharm_chains$name, 1, 0),
+  mutate(chain = if_else(name %in% pharm_chains$name, 1, 0),
          independ = if_else(chain == 1, 0, 1)) %>% 
   
   # convert "Yes" to 1 and "No"/NA to 0 for counting
@@ -294,7 +300,7 @@ pharm_types <- pharmacies %>%
 ## Subset for 100h pharmacies
 pharm_100h <- pharmacies %>%
   filter(x100_hour_contract == "Yes") %>% 
-  mutate(name_and_address = paste(trading_name_if_different, 
+  mutate(name_and_address = paste(name, 
                                   address,
                                   town,
                                   sep = ", ")) %>% 
@@ -303,10 +309,68 @@ pharm_100h <- pharmacies %>%
 
 ## Pharmacy provision table
 
+# first get locality populations
+loc_pops <- pops %>% 
+  
+  # compute financial year to join on
+  mutate(fy = as.character(paste0(year, "/", str_sub(year + 1, 3, 4)))) %>% 
+  
+  group_by(fy, pna_locality) %>% 
+  summarise(pop = sum(total)) %>% 
+  ungroup
+  
+  
+disp_data_agg <- disp_data %>%
+  
+  # get number of pharmacies by month and locality
+  group_by(fy, month, pna_locality) %>% 
+  mutate(n_pharmacies = n()) %>% 
+  arrange(month) %>% 
+  
+  # get total items by financial year, and number of pharmacies in latest month
+  group_by(fy, pna_locality) %>% 
+  summarise(n_items = sum(numberof_items),
+            n_nms = sum(numberof_new_medicine_service_nms_interventionsdeclared),
+            n_pharmacies = last(n_pharmacies),
+            n_months = last(month)) %>% 
+  ungroup %>% 
+    
+  mutate(fy = if_else(n_months != 12, 
+                      paste0(fy, " (", n_months, " months)"),
+                      fy)) 
+
+
+disp_table <- disp_data_agg %>% 
+  
+  # add populations
+  left_join(loc_pops) %>% 
+  
+  # Add on data for SW and England for latest full year of data
+  rename(area = pna_locality) %>% 
+  bind_rows(disp_eng_sw) %>% 
+  
+  # calculate rates
+  mutate(rate_pharmacies = round_half_up(n_pharmacies/pop*100000, 1),
+         rate_items = round_half_up(n_items/pop, 1)) %>% 
+
+  # add commas for large numbers
+  mutate_if(is.numeric, ~format(., big.mark = ",")) %>% 
+  mutate_all(~str_replace(., "NA", "-")) %>% 
+  
+  select("Financial Year" = fy,
+         "Area" = area,
+         "Population" = pop,
+         "Number of pharmacies in latest month of FY" = n_pharmacies,
+         "Pharmacies per 100,000 population" = rate_pharmacies,
+         "Number of dispensed items" = n_items,
+         "Items dispensed per head" = rate_items)
+
+
 
 
 ## 3) Access to essential services ----
 
+# Create table for plot
 pharm_hours <- pharmacies %>% 
   select(ods_code, pna_locality, opening_hours_monday:opening_hours_sunday) %>% 
   pivot_longer(opening_hours_monday:opening_hours_sunday, 
@@ -344,5 +408,23 @@ pharm_hours <- pharmacies %>%
   # convert to time
   mutate_at(c("open_time", "close_time"), 
             ~as.POSIXct(parse_time(., format = "%H:%M"), 
-                        origin = "1970-01-01")) 
+                        origin = "1970-01-01"))
+
+# Create table for summary bulletpoints
+pharm_hours_summary <- pharm_hours %>% 
+  drop_na(open_time) %>% 
+  group_by(ods_code, pna_locality, day_of_week) %>% 
+  summarise(open_time = min(open_time),
+            close_time = max(close_time)) %>% 
+  ungroup %>% 
+  arrange(ods_code, desc(day_of_week)) %>% 
+  mutate(open_before8_flag = if_else(open_time < ymd_hms("1970-01-01 08:00:00"), 
+                                     1, 0),
+         open_past630_flag = if_else(close_time > ymd_hms("1970-01-01 18:30:00"), 
+                                     1, 0)) %>% 
+  group_by(ods_code, pna_locality) %>% 
+  summarise(days_open = n(),
+         days_open_before8 = sum(open_before8_flag),
+         days_open_past630 = sum(open_past630_flag)) %>% 
+  ungroup 
 
