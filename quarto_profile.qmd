@@ -344,13 +344,13 @@ Below is a summary of the provision of advanced and enhanced services in `r loca
 
 **New Medicine Service** (NMS) accreditation: `r loc_pharm_nms` `r pluralise_noun(loc_pharm_nms, "pharmacy")`. In `r last_full_fy` (the last full year of data), there were `r loc_n_nms` NMSs undertaken.
 
-**Specialist Medicines Provider**: `r number_text(loc_pharm_smp)` `r pluralise_noun(loc_pharm_smp, "pharmacy")`. *List the ones?*
+**Specialist Medicines Provider**: `r number_text(loc_pharm_smp)` `r pluralise_noun(loc_pharm_smp, "pharmacy")`. 
 
-**Influenza vaccination**: `r number_text(loc_pharm_flu)` `r pluralise_noun(loc_pharm_flu, "pharmacy")` providing this advanced service. *Do we need total vaccinations?*
+**Influenza vaccination**: `r number_text(loc_pharm_flu)` `r pluralise_noun(loc_pharm_flu, "pharmacy")` providing this advanced service. 
 
-**Stoma appliance customisation**: `r number_text(loc_pharm_stoma)` `r pluralise_noun(loc_pharm_stoma, "pharmacy")` providing this service. *Number of customisations? Where to find?*
+**Stoma appliance customisation**: `r number_text(loc_pharm_stoma)` `r pluralise_noun(loc_pharm_stoma, "pharmacy")` providing this service. 
 
-**Appliance Use Reviews**: `r number_text(loc_pharm_aur)` `r pluralise_noun(loc_pharm_aur, "pharmacy")` providing this service. *Number?* Many appliances will be dispensed by DACs based around the country, which may provide this service.
+**Appliance Use Reviews**: `r number_text(loc_pharm_aur)` `r pluralise_noun(loc_pharm_aur, "pharmacy")` providing this service. Many appliances will be dispensed by DACs based around the country, which may provide this service.
 
 **NHS Pharmacy contraception**: `r number_text(loc_pharm_contracep)` `r pluralise_noun(loc_pharm_contracep, "pharmacy")` providing this service.
 
