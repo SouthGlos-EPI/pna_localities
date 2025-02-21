@@ -1,4 +1,4 @@
-This collection of scripts produces a Word document for any given PNA locality or list of PNA localities.
+The code in this repository produces a locality profile Word document for the Pharmaceutical Needs Assessment (PNA) for any given PNA locality or list of PNA localities.
 The code is currently written for the localities in Bristol, North Somerset, and South Gloucestershire, but can easily be adapted to run for any locality in the South West.
 
 The following files are needed:
