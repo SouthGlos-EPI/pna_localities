@@ -6,7 +6,6 @@
 # Loads required packages, data, sets custom themes, creates function, etc.
 # Preps data for each locality
 
-# Written by Cecilia Puech (South Gloucestershire council)
 # R 4.2.2
 # Original date: 27/01/2025
 
@@ -22,6 +21,7 @@ library(hms) #working with time
 library(knitr) #kable tables, inserting images
 library(here) #project directory
 library(tidylog) #log results of tidyverse functions
+library(english) #convert numbers to text
 
 # set the month that pharmacy data relates to
 pharm_data_month <- "January 2025"
