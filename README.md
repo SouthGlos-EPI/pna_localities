@@ -19,4 +19,4 @@ STEPS:
 
 Notes:
 - This process will only work if PNA localities align to 2021 LSOAs.
-- As of 20/02/2025, only 7 months of dispensing data are available. The dispensing_data.R script will be updated when new data is released.
+- As of 26/02/2025, only 8 months of dispensing data are available. The dispensing_data.R script will be updated when new data is released.
