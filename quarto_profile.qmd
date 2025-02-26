@@ -27,25 +27,16 @@ number_text <- function(x, cap = TRUE) {
     if (cap == T) "No" 
       else "no"
     
-  } else if (x < 12) {
+  } else if (x < 10) {
     if (cap == T) str_to_title(as.character(as.english(x))) 
       else as.character(as.english(x))
     
   } else {
     as.character(x)
   }
-} ## NOTE THIS DOESN'T WORK FOR <12 AND NO CAP?
-
-# Functions to handle changes between having 1 or multiple of a service
-pluralise_verb <- function(count) {
-  if (count == 1) {
-    "is"
-  } else {
-    "are"
-  }
 }
 
-pluralise_noun <- function(count, singular, plural = NULL) {
+pluralise <- function(count, singular, plural = NULL) {
   
     if (is.null(plural)) {
     # Handle irregular plurals like 'pharmacy' to 'pharmacies'
@@ -112,13 +103,13 @@ quint1_national <- round_half_up(filter(
 `r locality` PNA Locality in `r local_authority` has an estimated population of `r format(loc_pop, big.mark = ",")` as of `r max(pops$year)`. Summary statistics:
 
 * `r perc_fem`% of its residents are female, `r perc_male`% are male.
-* `r perc_over65`% are 65 and older.
+* `r perc_over65`% are 65 years and older.
 * `r quint1_local`% of its population live in the 20% most deprived areas of `r local_authority`.
 * `r quint1_national`% live in the 20% most deprived areas of England.
 
-**Figure X:** `r locality` PNA Locality population breakdown by age & sex, compared to `r local_authority`, mid-`r max(pops$year)` estimates.
+**Figure X:** `r locality` PNA Locality population breakdown by age & sex (`r max(pops$year)`).
 ```{r}
-#| fig-cap: "Source: ONS small area population estimates."
+#| fig-cap: "Source: Office for National Statistics, mid-year small area population estimates."
 #| fig-width: 8
 #| fig-height: 5
 
@@ -235,21 +226,21 @@ hr100_list <- if (loc_pharm_100h > 1) {
 
 ```
 
-As of `r pharm_data_month` in `r locality` PNA locality, there are `r number_text(loc_pharm_total, cap = F)` pharmacies and `r number_text(loc_disp_prac_branch, cap = F)` `r pluralise_noun(loc_disp_prac_branch, "practice")` or `r pluralise_noun(loc_disp_prac_branch, "branch of a practice", "branches of practices")` with dispensing doctors providing drugs and appliances to their own patients.
+As of `r pharm_data_month`, there are `r number_text(loc_pharm_total, cap = F)` pharmacies in `r locality` PNA locality. There `r pluralise(loc_disp_prac_branch, "is", "are")` `r number_text(loc_disp_prac_branch, cap = F)` `r pluralise(loc_disp_prac_branch, "practice")` or `r pluralise(loc_disp_prac_branch, "branch of a practice", "branches of practices")` with dispensing doctors providing drugs and appliances to their own patients.
 
 Of the `r number_text(loc_pharm_total, cap = F)` pharmacies, there are:
 
 * `r number_text(loc_pharm_first)` providing Pharmacy First services.
-* `r number_text(loc_pharm_independ)` independent `r pluralise_noun(loc_pharm_independ, "pharmacy")`.
-* `r number_text(loc_pharm_chain)` `r pluralise_noun(loc_pharm_chain, "pharmacy")` owned by national pharmacy chains`r chain_list`
-* `r number_text(loc_pharm_40h)` `r pluralise_noun(loc_pharm_40h, "pharmacy")` with 40-hour contracts and `r number_text(loc_pharm_100h, cap = F)` `r pluralise_noun(loc_pharm_100h, "pharmacy")` with 100-hour contracts. `r hr100_list`
-* `r number_text(loc_pharm_ds)` distance-selling `r pluralise_noun(loc_pharm_ds, "pharmacy")`
-* `r number_text(loc_pharm_lps)` `r pluralise_noun(loc_pharm_lps, "pharmacy")` with local pharmaceutical services contracts
-* `r number_text(loc_pharm_dac)` dispensing appliance `r pluralise_noun(loc_pharm_dac, "contractor")` (DAC).
+* `r number_text(loc_pharm_independ)` independent `r pluralise(loc_pharm_independ, "pharmacy")`.
+* `r number_text(loc_pharm_chain)` `r pluralise(loc_pharm_chain, "pharmacy")` owned by national pharmacy chains`r chain_list`
+* `r number_text(loc_pharm_40h)` `r pluralise(loc_pharm_40h, "pharmacy")` with 40-hour contracts and `r number_text(loc_pharm_100h, cap = F)` `r pluralise(loc_pharm_100h, "pharmacy")` with 100-hour contracts. `r hr100_list`
+* `r number_text(loc_pharm_ds)` distance-selling `r pluralise(loc_pharm_ds, "pharmacy")`
+* `r number_text(loc_pharm_lps)` `r pluralise(loc_pharm_lps, "pharmacy")` with local pharmaceutical services contracts
+* `r number_text(loc_pharm_dac)` dispensing appliance `r pluralise(loc_pharm_dac, "contractor")` (DAC).
 
 Table X shows the provision in `r locality` since the last PNA was published. There is no national expectation or standard on the ratio of pharmacies to population. These ratios do not consider the size and staffing of pharmacies which will determine the size of the population they are able to serve.
 
-**Table X:** Number and rate of pharmacies and items dispensed in `r locality` PNA Locality, compared to the South West and England, `r unique(first(disp_data_agg$fy))` - `r unique(last(disp_data_agg$fy))`.
+**Table X:** Number and rate of pharmacies and items dispensed in `r locality` PNA Locality, `r unique(first(disp_data_loc$fy))` - `r unique(last(disp_data_loc$fy))`.
 
 ```{r}
 
@@ -260,6 +251,8 @@ disp_table %>%
 
 ```
 *Source: NHS Business Services Authority*
+
+*Notes: Populations for locality and local authority are based on ONS mid-year population estimates. The population for each financial year is taken as the mid-year estimate for the first of the two years that make up the financial year. For example, for 2021/22 the population is taken as the mid-year estimate for 2021. If that year is not yet available, the latest available year is used.*
 
 ## Access to Essential Services
 
@@ -276,11 +269,11 @@ loc_pharm_open_past630 <- nrow(filter(pharm_hours_summary, pna_locality == local
 
 As of `r pharm_data_month`, in `r locality` PNA locality, there are:
 
-* `r number_text(loc_pharm_7days)` `r pluralise_noun(loc_pharm_7days, "pharmacy")` open seven days a week
-* `r number_text(loc_pharm_6days)` `r pluralise_noun(loc_pharm_6days, "pharmacy")` open six days a week
-* `r number_text(loc_pharm_5days)` `r pluralise_noun(loc_pharm_5days, "pharmacy")` open five days a week
-* `r number_text(loc_pharm_open_before8)` `r pluralise_noun(loc_pharm_open_before8, "pharmacy")` open before 8:00 at least five days a week
-* `r number_text(loc_pharm_open_past630)` `r pluralise_noun(loc_pharm_open_past630, "pharmacy")` open past 18:30 at least five days a week
+* `r number_text(loc_pharm_7days)` `r pluralise(loc_pharm_7days, "pharmacy")` open seven days a week
+* `r number_text(loc_pharm_6days)` `r pluralise(loc_pharm_6days, "pharmacy")` open six days a week
+* `r number_text(loc_pharm_5days)` `r pluralise(loc_pharm_5days, "pharmacy")` open five days a week
+* `r number_text(loc_pharm_open_before8)` `r pluralise(loc_pharm_open_before8, "pharmacy")` open before 8:00 at least five days a week
+* `r number_text(loc_pharm_open_past630)` `r pluralise(loc_pharm_open_past630, "pharmacy")` open past 18:30 at least five days a week
 
 **Figure X:** `r locality` PNA Locality pharmacy coverage across the week, `r pharm_data_month`
 ```{r}
@@ -326,12 +319,11 @@ pharm_hours %>%
 ```{r}
 
 # Compute values for text
-last_full_fy <- unique(last(filter(disp_data_agg, n_months == 12)$fy))
-loc_n_nms <- format(filter(disp_data_agg, fy == last_full_fy, pna_locality == locality)$n_nms, big.mark = ",")
+last_full_fy <- unique(last(filter(disp_data_loc, n_months == 12)$fy))
+loc_n_nms <- format(filter(disp_data_loc, fy == last_full_fy, area == locality)$n_nms, big.mark = ",")
 loc_pharm_nms <- filter(pharm_types, pna_locality == locality)$nms
 loc_pharm_smp <- filter(pharm_types, pna_locality == locality)$specialist_medicines_provider
 loc_pharm_flu <- filter(pharm_types, pna_locality == locality)$flu
-loc_pharm_stoma <- filter(pharm_types, pna_locality == locality)$stoma_appliance_customisation
 loc_pharm_aur <- filter(pharm_types, pna_locality == locality)$appliance_usage_reviews
 loc_pharm_contracep <- filter(pharm_types, pna_locality == locality)$contraception_service
 loc_pharm_lfd <- filter(pharm_types, pna_locality == locality)$lateral_flow_dist_service
@@ -342,21 +334,19 @@ loc_pharm_smok <- filter(pharm_types, pna_locality == locality)$smoking_cessatio
 
 Below is a summary of the provision of advanced and enhanced services in `r locality` PNA locality as of `r pharm_data_month`.
 
-**New Medicine Service** (NMS) accreditation: `r loc_pharm_nms` `r pluralise_noun(loc_pharm_nms, "pharmacy")`. In `r last_full_fy` (the last full year of data), there were `r loc_n_nms` NMSs undertaken.
+**New Medicine Service** (NMS) accreditation: `r loc_pharm_nms` `r pluralise(loc_pharm_nms, "pharmacy")`. In `r last_full_fy` (the last full year of data), there were `r loc_n_nms` NMSs undertaken.
 
-**Specialist Medicines Provider**: `r number_text(loc_pharm_smp)` `r pluralise_noun(loc_pharm_smp, "pharmacy")`. 
+**Specialist Medicines Provider**: `r number_text(loc_pharm_smp)` `r pluralise(loc_pharm_smp, "pharmacy")`. 
 
-**Influenza vaccination**: `r number_text(loc_pharm_flu)` `r pluralise_noun(loc_pharm_flu, "pharmacy")` providing this advanced service. 
+**Influenza vaccination**: `r number_text(loc_pharm_flu)` `r pluralise(loc_pharm_flu, "pharmacy")` providing this advanced service. 
 
-**Stoma appliance customisation**: `r number_text(loc_pharm_stoma)` `r pluralise_noun(loc_pharm_stoma, "pharmacy")` providing this service. 
+**Appliance Use Reviews**: `r number_text(loc_pharm_aur)` `r pluralise(loc_pharm_aur, "pharmacy")` providing this service. Many appliances will be dispensed by DACs based around the country, which may provide this service.
 
-**Appliance Use Reviews**: `r number_text(loc_pharm_aur)` `r pluralise_noun(loc_pharm_aur, "pharmacy")` providing this service. Many appliances will be dispensed by DACs based around the country, which may provide this service.
+**NHS Pharmacy contraception**: `r number_text(loc_pharm_contracep)` `r pluralise(loc_pharm_contracep, "pharmacy")` providing this service.
 
-**NHS Pharmacy contraception**: `r number_text(loc_pharm_contracep)` `r pluralise_noun(loc_pharm_contracep, "pharmacy")` providing this service.
+**Lateral Flow Device test supply**: `r number_text(loc_pharm_lfd)` `r pluralise(loc_pharm_lfd, "pharmacy")` providing this service.
 
-**Lateral Flow Device test supply**: `r number_text(loc_pharm_lfd)` `r pluralise_noun(loc_pharm_lfd, "pharmacy")` providing this service.
+**Hypertension Case-Finding**: `r number_text(loc_pharm_ht)` `r pluralise(loc_pharm_ht, "pharmacy")` providing this service.
 
-**Hypertension Case-Finding**: `r number_text(loc_pharm_ht)` `r pluralise_noun(loc_pharm_ht, "pharmacy")` providing this service.
-
-**Stop Smoking**: `r number_text(loc_pharm_smok)` `r pluralise_noun(loc_pharm_smok, "pharmacy")` providing this service.
+**Stop Smoking**: `r number_text(loc_pharm_smok)` `r pluralise(loc_pharm_smok, "pharmacy")` providing this service.
 
