@@ -309,7 +309,7 @@ pharm_100h <- pharmacies %>%
 
 ## Pharmacy provision table
 
-# first get locality populations
+# Get locality populations
 loc_pops <- pops %>% 
   
   # compute financial year to join on
@@ -318,9 +318,9 @@ loc_pops <- pops %>%
   group_by(fy, pna_locality) %>% 
   summarise(pop = sum(total)) %>% 
   ungroup
-  
-  
-disp_data_agg <- disp_data %>%
+
+# Aggregate data to locality level
+disp_data_loc <- disp_data %>%
   
   # get number of pharmacies by month and locality
   group_by(fy, month, pna_locality) %>% 
@@ -334,19 +334,28 @@ disp_data_agg <- disp_data %>%
             n_pharmacies = last(n_pharmacies),
             n_months = last(month)) %>% 
   ungroup %>% 
-    
-  mutate(fy = if_else(n_months != 12, 
-                      paste0(fy, " (", n_months, " months)"),
-                      fy)) 
-
-
-disp_table <- disp_data_agg %>% 
   
   # add populations
   left_join(loc_pops) %>% 
   
+  # fill in populations with latest year where missing
+  arrange(fy) %>% 
+  group_by(pna_locality) %>% 
+  fill(pop, .direction = "down") %>% 
+  ungroup %>% 
+  
+  rename("area" = pna_locality) %>% 
+  
+  # label incomplete year of data
+  mutate(fy = if_else(n_months != 12,
+                      paste0(fy, " (", n_months, " months)"),
+                      fy)) 
+
+
+# combine with England/SW data and calculate rates
+disp_table <- disp_data_loc %>%
+  
   # Add on data for SW and England for latest full year of data
-  rename(area = pna_locality) %>% 
   bind_rows(disp_eng_sw) %>% 
   
   # calculate rates
