@@ -35,7 +35,38 @@ disp2122 <- mutate(read_csv("https://www.nhsbsa.nhs.uk/sites/default/files/2021-
   mutate(fy = "2021/22")
 
 
-disp2223 <- mutate(read_csv("https://www.nhsbsa.nhs.uk/sites/default/files/2023-07/Dispensing%20Data%20Apr%2023%20-%20CSV.csv"),
+disp2223 <- mutate(read_csv("https://www.nhsbsa.nhs.uk/sites/default/files/2022-08/Dispensing%20Data%20Apr%2022%20%E2%80%93%20CSV_0.csv"),
+                   month = 1) %>% 
+  bind_rows(mutate(read_csv("https://www.nhsbsa.nhs.uk/sites/default/files/2022-08/Dispensing%20Data%20May%2022%20%E2%80%93%20CSV.csv"),
+                   month = 2)) %>% 
+  bind_rows(mutate(read_csv("https://www.nhsbsa.nhs.uk/sites/default/files/2022-09/Dispensing%20Data%20Jun%2022%20%E2%80%93%20CSV.csv"),
+                   month = 3)) %>% 
+  bind_rows(mutate(read_csv("https://www.nhsbsa.nhs.uk/sites/default/files/2022-10/Dispensing%20Data%20Jul%2022%20-%20CSV.csv"),
+                   month = 4)) %>% 
+  bind_rows(mutate(read_csv("https://www.nhsbsa.nhs.uk/sites/default/files/2022-11/Dispensing%20Data%20Aug%2022%20-%20CSV_0.csv"),
+                   month = 5)) %>% 
+  bind_rows(mutate(read_csv("https://www.nhsbsa.nhs.uk/sites/default/files/2023-01/Dispensing%20Data%20Sep%2022%20-%20CSV.csv"),
+                   month = 6)) %>% 
+  bind_rows(mutate(read_csv("https://www.nhsbsa.nhs.uk/sites/default/files/2023-01/Dispensing%20Data%20Oct%2022%20%E2%80%93%20CSV.csv"),
+                   month = 7)) %>% 
+  bind_rows(mutate(read_csv("https://www.nhsbsa.nhs.uk/sites/default/files/2023-02/Dispensing%20Data%20Nov%2022%20-%20CSV.csv"),
+                   month = 8)) %>% 
+  bind_rows(mutate(read_csv("https://www.nhsbsa.nhs.uk/sites/default/files/2023-03/Dispensing%20Data%20Dec%2022%20-%20CSV.csv"),
+                   month = 9)) %>% 
+  bind_rows(mutate(read_csv("https://www.nhsbsa.nhs.uk/sites/default/files/2023-04/Dispensing%20Data%20Jan%2023%20-%20CSV.csv"),
+                   month = 10)) %>% 
+  bind_rows(mutate(read_csv("https://www.nhsbsa.nhs.uk/sites/default/files/2023-05/Dispensing%20Data%20Feb%2023%20-%20CSV.csv"),
+                   month = 11)) %>% 
+  bind_rows(mutate(read_csv("https://www.nhsbsa.nhs.uk/sites/default/files/2023-06/Dispensing%20Data%20Mar%2023%20-%20CSV.csv"),
+                   month = 12)) %>% 
+  select(month, ContractorCode, Postcode, 
+         NumberofItems, 
+         `NumberofNewMedicineService(NMS)interventionsdeclared`) %>% 
+  clean_names %>% 
+  mutate(fy = "2022/23")
+
+
+disp2324 <- mutate(read_csv("https://www.nhsbsa.nhs.uk/sites/default/files/2023-07/Dispensing%20Data%20Apr%2023%20-%20CSV.csv"),
                    month = 1) %>% 
   bind_rows(mutate(read_csv("https://www.nhsbsa.nhs.uk/sites/default/files/2023-08/Dispensing%20Data%20May%2023%20-%20CSV.csv"),
             month = 2)) %>% 
@@ -63,9 +94,9 @@ disp2223 <- mutate(read_csv("https://www.nhsbsa.nhs.uk/sites/default/files/2023-
          NumberofItems, 
          `NumberofNewMedicineService(NMS)interventionsdeclared`) %>% 
   clean_names %>% 
-  mutate(fy = "2022/23")
+  mutate(fy = "2023/24")
 
-disp2324 <- mutate(read_csv("https://www.nhsbsa.nhs.uk/sites/default/files/2024-07/Dispensing%20Data%20Apr%2024%20-%20CSV.csv"),
+disp2425 <- mutate(read_csv("https://www.nhsbsa.nhs.uk/sites/default/files/2024-07/Dispensing%20Data%20Apr%2024%20-%20CSV.csv"),
                    month = 1) %>% 
   bind_rows(mutate(read_csv("https://www.nhsbsa.nhs.uk/sites/default/files/2024-08/Dispensing%20Data%20May%2024%20-%20CSV.csv"),
             month = 2)) %>% 
@@ -79,14 +110,17 @@ disp2324 <- mutate(read_csv("https://www.nhsbsa.nhs.uk/sites/default/files/2024-
             month = 6)) %>% 
   bind_rows(mutate(read_csv("https://www.nhsbsa.nhs.uk/sites/default/files/2025-01/Dispensing%20Data%20Oct%2024%20-%20CSV.csv"),
             month = 7)) %>% 
+  bind_rows(mutate(read_csv("https://www.nhsbsa.nhs.uk/sites/default/files/2025-02/Dispensing%20Data%20Nov%2024%20-%20CSV.csv"),
+            month = 8)) %>% 
   select(month, ContractorCode, Postcode, 
          NumberofItems, 
          `NumberofNewMedicineService(NMS)interventionsdeclared`) %>% 
   clean_names %>% 
-  mutate(fy = "2023/24")
+  mutate(fy = "2024/25")
 
 disp <- bind_rows(disp2122, disp2223) %>% 
   bind_rows(disp2324) %>% 
+  bind_rows(disp2425) %>% 
   mutate(last_updated = Sys.Date())
 
 saveRDS(disp, here("Data", "dispensing_data.rds"))
