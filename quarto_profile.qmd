@@ -245,7 +245,7 @@ Table X shows the provision in `r locality` since the last PNA was published. Th
 ```{r}
 
 disp_table %>% 
-  filter(Area %in% c("South West", "England", locality)) %>% 
+  filter(Area %in% c("South West", "England", locality, local_authority)) %>% 
   mutate(Area = if_else(Area == locality, "Locality", Area)) %>% 
   kable()
 

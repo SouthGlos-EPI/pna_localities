@@ -102,7 +102,7 @@ disp_data <- readRDS(here("Data", "dispensing_data.rds")) %>%
 ## Dispensing data for England and SW - done manually in Excel
 disp_eng_sw <- read_xlsx(here("Data", "dispensing_data_England_SW.xlsx"))
 
-## Populations data
+## Populations data at LSOA level
 # Loop reading in pops by year of data - source: ONS
 
 # start with empty data frame
@@ -124,6 +124,21 @@ temp <- read_xlsx(here("Data", "sapelsoasyoatablefinal.xlsx"),
 pops <- bind_rows(pops, temp)
 
 }
+
+## Latest populations data for LA, Region, and England
+# https://www.ons.gov.uk/peoplepopulationandcommunity/populationandmigration/populationestimates/datasets/estimatesofthepopulationforenglandandwales
+
+pops_high_lvl <- read_xlsx(here("Data", "mye23tablesew.xlsx"),
+                             sheet = "MYE2 - Persons",
+                             skip = 7) %>% 
+  clean_names %>% 
+  filter(geography %in% c("County", "Unitary Authority") | 
+           name == "ENGLAND" | name == "SOUTH WEST") %>% 
+  mutate(name = str_to_title(name), 
+         name = str_remove_all(name, ", City Of")) %>% 
+  select(code, name, geography, "pop" = all_ages)
+  
+
 
 # IMD lookup - source: OHID
 imd <- read_xlsx(here("Data", "2021-lsoa-imd-lookup.xlsx"),
@@ -226,7 +241,9 @@ dep_national <- imd %>%
 
 ## 2) Pharmacy Overview ----
 
-## Dispensing practices
+## 2.1 Pharmacy types summary ----
+
+## Dispensing practices (and branches of practices)
 disp_prac_main <- disp_prac %>% 
   drop_na(practice_code) %>% 
   
@@ -307,7 +324,7 @@ pharm_100h <- pharmacies %>%
   select(pna_locality, name_and_address)
 
 
-## Pharmacy provision table
+## 2.2 Pharmacy provision and dispensing data table ----
 
 # Get locality populations
 loc_pops <- pops %>% 
@@ -349,14 +366,39 @@ disp_data_loc <- disp_data %>%
   # label incomplete year of data
   mutate(fy = if_else(n_months != 12,
                       paste0(fy, " (", n_months, " months)"),
-                      fy)) 
+                      fy)) %>% 
+  
+  mutate(pop = if_else(n_months != 12, NA, pop))
 
+
+# Aggregate again for LAs (latest year only)
+disp_data_la <- disp_data %>%
+  
+  # get number of pharmacies by month and locality
+  group_by(fy, month, local_authority) %>% 
+  mutate(n_pharmacies = n()) %>% 
+  arrange(month) %>% 
+  
+  # get total items in last FY and number of pharmacies in latest month
+  group_by(fy, local_authority) %>% 
+  summarise(n_items = sum(numberof_items),
+            n_pharmacies = last(n_pharmacies),
+            n_months = last(month)) %>% 
+  ungroup %>% 
+  rename("area" = local_authority) %>% 
+  filter(n_months == 12) %>% 
+  filter(fy == last(fy))
+
+
+# Bind with England/SW data and add on populations
+disp_data_high_lvl <- bind_rows(disp_data_la, disp_eng_sw) %>% 
+  left_join(pops_high_lvl, by = c("area" = "name"))
 
 # combine with England/SW data and calculate rates
 disp_table <- disp_data_loc %>%
   
   # Add on data for SW and England for latest full year of data
-  bind_rows(disp_eng_sw) %>% 
+  bind_rows(disp_data_high_lvl) %>% 
   
   # calculate rates
   mutate(rate_pharmacies = round_half_up(n_pharmacies/pop*100000, 1),
