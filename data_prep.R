@@ -24,7 +24,7 @@ library(tidylog) #log results of tidyverse functions
 library(english) #convert numbers to text
 
 # set the month that pharmacy data relates to
-pharm_data_month <- "January 2025"
+pharm_data_month <- "May 2025"
 
 ## colour palette
 palette <- c("#1C1F63", "#10CFFB" , "#9EF101","#8605E4")
