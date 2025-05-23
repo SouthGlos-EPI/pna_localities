@@ -326,7 +326,7 @@ loc_pharm_smp <- filter(pharm_types, pna_locality == locality)$specialist_medici
 loc_pharm_flu <- filter(pharm_types, pna_locality == locality)$flu
 loc_pharm_aur <- filter(pharm_types, pna_locality == locality)$appliance_usage_reviews
 loc_pharm_contracep <- filter(pharm_types, pna_locality == locality)$contraception_service
-loc_pharm_lfd <- filter(pharm_types, pna_locality == locality)$lateral_flow_dist_service
+loc_pharm_lfd <- filter(pharm_types, pna_locality == locality)$lft
 loc_pharm_ht <- filter(pharm_types, pna_locality == locality)$hypertension_case_finding
 loc_pharm_smok <- filter(pharm_types, pna_locality == locality)$smoking_cessation
 

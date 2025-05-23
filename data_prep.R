@@ -75,13 +75,15 @@ lsoa_loc_lookup <- pc_lsoa_loc_lookup %>%
 
 ## Pharmacies
 # Join with lookup to get official PNA Localities
-pharmacies <- read_xlsx(here("Data", "20250129 Snapshot CP lists BNSSG.xlsx"),
+pharmacies <- read_xlsx(here("Data", "20250519 Snapshot CP lists BNSSG.xlsx"),
                         skip = 1) %>% 
   clean_names %>% 
   mutate(postcode = str_remove_all(postcode, " ")) %>% 
   left_join(pc_lsoa_loc_lookup, by = "postcode") %>% 
   relocate(ods_code, contractor_name, "name" = trading_name_if_different, icb,
-           health_and_wellbeing_board:lsoa_2021_code)
+           health_and_wellbeing_board:lsoa_2021_code) %>% 
+  #rename flu column
+  rename("flu" = flu_24_25)
 
 
 ## Dispensing practices
@@ -299,13 +301,13 @@ pharm_types <- pharmacies %>%
          independ = if_else(chain == 1, 0, 1)) %>% 
   
   # convert "Yes" to 1 and "No"/NA to 0 for counting
-  mutate_at(vars(dac:lateral_flow_dist_service, specialist_medicines_provider), 
+  mutate_at(vars(dac:appliance_usage_reviews, specialist_medicines_provider), 
             ~replace_na(if_else(. == "Yes", 1, 0), 0)) %>% 
   
   # add column for total and count
   mutate(total = 1) %>% 
   group_by(pna_locality) %>% 
-  summarise_at(vars(total, dac:lateral_flow_dist_service, 
+  summarise_at(vars(total, dac:appliance_usage_reviews, 
                     specialist_medicines_provider, chain, independ), sum) %>% 
   ungroup %>% 
   
@@ -443,7 +445,7 @@ pharm_hours <- pharmacies %>%
          hours = str_to_sentence(hours)) %>%
   
   # split time ranges into separate rows, convert "closed" to NA
-  separate_rows(hours, sep = " ") %>%  
+  separate_rows(hours, sep = ",") %>%  
   mutate(hours = if_else(hours == "Closed", NA, hours)) %>% 
   
   # split into opening and closing hours
