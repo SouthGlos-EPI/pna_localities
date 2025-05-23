@@ -277,7 +277,7 @@ As of `r pharm_data_month`, in `r locality` PNA locality, there are:
 
 **Figure X:** `r locality` PNA Locality pharmacy coverage across the week, `r pharm_data_month`
 ```{r}
-#| fig-cap: "Source: TBC"
+#| fig-cap: "Source: NHS South West Collaborative Commissioning Hub"
 #| fig-width: 8
 #| fig-height: 5
 
