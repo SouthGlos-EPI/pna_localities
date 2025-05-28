@@ -32,7 +32,7 @@ high_lvl_pop_year <- 2023
 
 # number of pharmacies in the South West in the month of data specified above
 # provided by Les Riggs at NHS South West Collaborative Commissioning Hub
-n_pharm_sw <- 919
+n_pharm_sw <- 931
 
 ## colour palette
 palette <- c("#1C1F63", "#10CFFB" , "#9EF101","#8605E4")
