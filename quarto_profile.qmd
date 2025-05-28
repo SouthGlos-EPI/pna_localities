@@ -100,14 +100,14 @@ quint1_national <- round_half_up(filter(
 ```
 
 
-`r locality` PNA Locality in `r local_authority` has an estimated population of `r format(loc_pop, big.mark = ",")` as of `r max(pops$year)`. Summary statistics:
+`r locality` PNA Locality in `r local_authority` has an estimated population of `r format(loc_pop, big.mark = ",")` as of `r lsoa_pop_year`. Summary statistics:
 
 * `r perc_fem`% of its residents are female, `r perc_male`% are male.
 * `r perc_over65`% are 65 years and older.
 * `r quint1_local`% of its population live in the 20% most deprived areas of `r local_authority`.
 * `r quint1_national`% live in the 20% most deprived areas of England.
 
-**Figure X:** `r locality` PNA Locality population breakdown by age & sex (`r max(pops$year)`).
+**Figure X:** `r locality` PNA Locality population breakdown by age & sex (`r lsoa_pop_year`).
 ```{r}
 #| fig-cap: "Source: Office for National Statistics, mid-year small area population estimates."
 #| fig-width: 8
@@ -238,9 +238,24 @@ Of the `r number_text(loc_pharm_total, cap = F)` pharmacies, there are:
 * `r number_text(loc_pharm_lps)` `r pluralise(loc_pharm_lps, "pharmacy")` with local pharmaceutical services contracts
 * `r number_text(loc_pharm_dac)` dispensing appliance `r pluralise(loc_pharm_dac, "contractor")` (DAC).
 
-Table X shows the provision in `r locality` since the last PNA was published. There is no national expectation or standard on the ratio of pharmacies to population. These ratios do not consider the size and staffing of pharmacies which will determine the size of the population they are able to serve.
+Tables X and X show the provision in `r locality` compared to other areas. Note that there is no national expectation or standard on the ratio of pharmacies to population. These ratios do not consider the size and staffing of pharmacies which will determine the size of the population they are able to serve.
 
-**Table X:** Number and rate of pharmacies and items dispensed in `r locality` PNA Locality, `r unique(first(disp_data_loc$fy))` - `r unique(last(disp_data_loc$fy))`.
+**Table X:** Number and rate of pharmacies in `r locality` PNA Locality, `r local_authority`, and the South West (`r pharm_data_month`).
+
+```{r}
+
+pharm_rate %>% 
+  filter(Area %in% c("South West", locality, local_authority)) %>% 
+  mutate(Area = if_else(Area == locality, "Locality", Area)) %>% 
+  kable()
+
+```
+*Source: NHS South West Collaborative Commissioning Hub*
+
+*Notes: Populations for localities are based on the latest ONS mid-year population estimates for small areas (`r lsoa_pop_year`), and populations for local authority and region are based on the latest subnational mid-year estimates (`r high_lvl_pop_year`).*
+
+
+**Table X:** Number and rate of items dispensed in `r locality` PNA Locality, `r local_authority`, the South West, and England (`r unique(disp_data_loc$fy)`).
 
 ```{r}
 
@@ -250,9 +265,10 @@ disp_table %>%
   kable()
 
 ```
+
 *Source: NHS Business Services Authority*
 
-*Notes: Populations for locality and local authority are based on ONS mid-year population estimates. The population for each financial year is taken as the mid-year estimate for the first of the two years that make up the financial year. For example, for 2021/22 the population is taken as the mid-year estimate for 2021. If that year is not yet available, the latest available year is used.*
+*Notes: Populations for localities are based on the latest ONS mid-year population estimates for small areas (`r lsoa_pop_year`), and populations for local authority and region are based on the latest subnational mid-year estimates (`r high_lvl_pop_year`).*
 
 ## Access to Essential Services
 
@@ -275,7 +291,7 @@ As of `r pharm_data_month`, in `r locality` PNA locality, there are:
 * `r number_text(loc_pharm_open_before8)` `r pluralise(loc_pharm_open_before8, "pharmacy")` open before 8:00 at least five days a week
 * `r number_text(loc_pharm_open_past630)` `r pluralise(loc_pharm_open_past630, "pharmacy")` open past 18:30 at least five days a week
 
-**Figure X:** `r locality` PNA Locality pharmacy coverage across the week, `r pharm_data_month`
+**Figure X:** `r locality` PNA Locality pharmacy coverage across the week (`r pharm_data_month`).
 ```{r}
 #| fig-cap: "Source: NHS South West Collaborative Commissioning Hub"
 #| fig-width: 8
@@ -319,8 +335,7 @@ pharm_hours %>%
 ```{r}
 
 # Compute values for text
-last_full_fy <- unique(last(filter(disp_data_loc, n_months == 12)$fy))
-loc_n_nms <- format(filter(disp_data_loc, fy == last_full_fy, area == locality)$n_nms, big.mark = ",")
+loc_n_nms <- format(filter(disp_data_loc, area == locality)$n_nms, big.mark = ",")
 loc_pharm_nms <- filter(pharm_types, pna_locality == locality)$nms
 loc_pharm_smp <- filter(pharm_types, pna_locality == locality)$specialist_medicines_provider
 loc_pharm_flu <- filter(pharm_types, pna_locality == locality)$flu
@@ -334,7 +349,7 @@ loc_pharm_smok <- filter(pharm_types, pna_locality == locality)$smoking_cessatio
 
 Below is a summary of the provision of advanced and enhanced services in `r locality` PNA locality as of `r pharm_data_month`.
 
-**New Medicine Service** (NMS) accreditation: `r loc_pharm_nms` `r pluralise(loc_pharm_nms, "pharmacy")`. In `r last_full_fy` (the last full year of data), there were `r loc_n_nms` NMSs undertaken.
+**New Medicine Service** (NMS) accreditation: `r loc_pharm_nms` `r pluralise(loc_pharm_nms, "pharmacy")`. In `r unique(disp_data_loc$fy)` (the last full year of data), there were `r loc_n_nms` NMSs undertaken.
 
 **Specialist Medicines Provider**: `r number_text(loc_pharm_smp)` `r pluralise(loc_pharm_smp, "pharmacy")`. 
 

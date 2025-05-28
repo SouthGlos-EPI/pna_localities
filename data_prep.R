@@ -26,6 +26,14 @@ library(english) #convert numbers to text
 # set the month that pharmacy data relates to
 pharm_data_month <- "May 2025"
 
+# set years for population data
+lsoa_pop_year <- 2022
+high_lvl_pop_year <- 2023
+
+# number of pharmacies in the South West in the month of data specified above
+# provided by Les Riggs at NHS South West Collaborative Commissioning Hub
+n_pharm_sw <- 919
+
 ## colour palette
 palette <- c("#1C1F63", "#10CFFB" , "#9EF101","#8605E4")
 
@@ -93,44 +101,61 @@ disp_prac <- read_xlsx(here("Data", "20250117 Dispensing Practices BNSSG.xlsx"))
   select(practice_code, practice_address_main_site, dispensing_address_es) 
 
 
-## Read in dispensing data (collated in dispensing_data R script)
-disp_data <- readRDS(here("Data", "dispensing_data.rds")) %>% 
+## Read in pharmacy dispensing data for most full year of data (currently 2023/24)
+# Each month needs to be imported separately and appended
+disp_data <- mutate(read_csv("https://www.nhsbsa.nhs.uk/sites/default/files/2023-07/Dispensing%20Data%20Apr%2023%20-%20CSV.csv"),
+                                month = 1) %>% 
+  bind_rows(mutate(read_csv("https://www.nhsbsa.nhs.uk/sites/default/files/2023-08/Dispensing%20Data%20May%2023%20-%20CSV.csv"),
+                   month = 2)) %>% 
+  bind_rows(mutate(read_csv("https://www.nhsbsa.nhs.uk/sites/default/files/2023-09/Dispensing%20Data%20June%2023%20-%20CSV.csv"),
+                   month = 3)) %>%   
+  bind_rows(mutate(read_csv("https://www.nhsbsa.nhs.uk/sites/default/files/2023-10/Dispensing%20Data%20July%2023%20-%20CSV.csv"),
+                   month = 4)) %>%  
+  bind_rows(mutate(read_csv("https://www.nhsbsa.nhs.uk/sites/default/files/2023-11/Dispensing%20Data%20Aug%2023%20-%20CSV.csv"),
+                   month = 5)) %>%  
+  bind_rows(mutate(read_csv("https://www.nhsbsa.nhs.uk/sites/default/files/2023-12/Dispensing%20Data%20Sep%2023%20-%20CSV.csv"),
+                   month = 6)) %>% 
+  bind_rows(mutate(read_csv("https://www.nhsbsa.nhs.uk/sites/default/files/2024-01/Dispensing%20Data%20Oct%2023%20-%20CSV.csv"),
+                   month = 7)) %>% 
+  bind_rows(mutate(read_csv("https://www.nhsbsa.nhs.uk/sites/default/files/2024-02/Dispensing%20Data%20Nov%2023%20-%20CSV.csv"),
+                   month = 8)) %>% 
+  bind_rows(mutate(read_csv("https://www.nhsbsa.nhs.uk/sites/default/files/2024-05/Dispensing%20Data%20Dec%2023%20-%20CSV.csv"),
+                   month = 9)) %>% 
+  bind_rows(mutate(read_csv("https://www.nhsbsa.nhs.uk/sites/default/files/2024-05/Dispensing%20Data%20Jan%2024%20-%20CSV.csv"),
+                   month = 10)) %>% 
+  bind_rows(mutate(read_csv("https://www.nhsbsa.nhs.uk/sites/default/files/2024-05/Dispensing%20Data%20Feb%2024%20v2%20-%20CSV.csv"),
+                   month = 11)) %>% 
+  bind_rows(mutate(read_csv("https://www.nhsbsa.nhs.uk/sites/default/files/2024-07/Dispensing%20Data%20Mar%2024%20-%20CSV%20-%20update.csv"),
+                   month = 12)) %>% 
+  select(month, ContractorCode, Postcode, 
+         NumberofItems, 
+         `NumberofNewMedicineService(NMS)interventionsdeclared`) %>% 
+  clean_names %>% 
   
   # Join Locality lookup with postcode (not pharmacy codes as these change)
   mutate(postcode = str_remove_all(postcode, " ")) %>% 
   left_join(pc_lsoa_loc_lookup) %>% 
-  drop_na(pna_locality) 
+  drop_na(pna_locality) %>% 
+  mutate(fy = "2023/24")
 
-## Dispensing data for England and SW - done manually in Excel
+## Dispensing data for England and SW - done manually in Excel!
 disp_eng_sw <- read_xlsx(here("Data", "dispensing_data_England_SW.xlsx"))
 
-## Populations data at LSOA level
-# Loop reading in pops by year of data - source: ONS
+## Latest populations data at LSOA level
+#https://www.ons.gov.uk/peoplepopulationandcommunity/populationandmigration/populationestimates/datasets/lowersuperoutputareamidyearpopulationestimates
 
-# start with empty data frame
-pops <- data.frame()
-
-# read in each data sheet and append 
-# note this method would have been more useful if more than 2 years available
-for (year in c(2021:2022)) {
-
-temp <- read_xlsx(here("Data", "sapelsoasyoatablefinal.xlsx"),
-                  sheet = paste0("Mid-", year, " LSOA 2021"),
+pops <- read_xlsx(here("Data", "mype_lsoa.xlsx"),
+                  sheet = paste0("Mid-", lsoa_pop_year, " LSOA 2021"),
                   skip = 3) %>% 
   clean_names %>% 
-  mutate(year = year) %>% #add column for year
-  
   # Join/filter relevant PNA localities
   inner_join(lsoa_loc_lookup)
 
-pops <- bind_rows(pops, temp)
-
-}
 
 ## Latest populations data for LA, Region, and England
 # https://www.ons.gov.uk/peoplepopulationandcommunity/populationandmigration/populationestimates/datasets/estimatesofthepopulationforenglandandwales
 
-pops_high_lvl <- read_xlsx(here("Data", "mye23tablesew.xlsx"),
+pops_high_lvl <- read_xlsx(here("Data", "mype_la_sw_england.xlsx"),
                              sheet = "MYE2 - Persons",
                              skip = 7) %>% 
   clean_names %>% 
@@ -138,7 +163,7 @@ pops_high_lvl <- read_xlsx(here("Data", "mye23tablesew.xlsx"),
            name == "ENGLAND" | name == "SOUTH WEST") %>% 
   mutate(name = str_to_title(name), 
          name = str_remove_all(name, ", City Of")) %>% 
-  select(code, name, geography, "pop" = all_ages)
+  select(code, name, geography, "pop" = all_ages) 
   
 
 
@@ -155,8 +180,6 @@ imd <- read_xlsx(here("Data", "2021-lsoa-imd-lookup.xlsx"),
   inner_join(lsoa_loc_lookup)
 
 
-# tidy up
-rm(temp, year)
 
 ###################### SECTION 3: DATA MANIPULATION ############################
 
@@ -165,9 +188,6 @@ rm(temp, year)
 ## 1.1 Age/Sex Breakdown ----
 
 age_sex_locality <- pops %>% 
-  
-  # keep latest year of data
-  filter(year == max(year)) %>%
   
   # Join/filter PNA localities
   inner_join(lsoa_loc_lookup) %>% 
@@ -217,8 +237,7 @@ age_sex_la <- age_sex_locality %>%
 dep_local <- imd %>% 
   
   # Join LSOA populations
-  left_join(filter(pops, 
-                   year == max(year))) %>% 
+  left_join(pops) %>% 
   
   # Count populations by quintile
   # convert IMD to factor and prevent R from deleting rows when grouping (drop = F)
@@ -232,8 +251,7 @@ dep_local <- imd %>%
 # Get populations by national IMD quintile in each locality
 dep_national <- imd %>% 
   
-  left_join(filter(pops, 
-                   year == max(year))) %>% 
+  left_join(pops) %>% 
   
   mutate(imd_quintile_national = as.factor(imd_quintile_national)) %>% 
   group_by(pna_locality, imd_quintile_national, .drop = F) %>% 
@@ -326,65 +344,83 @@ pharm_100h <- pharmacies %>%
   select(pna_locality, name_and_address)
 
 
-## 2.2 Pharmacy provision and dispensing data table ----
+## 2.2 Pharmacy provision table ----
 
 # Get locality populations
 loc_pops <- pops %>% 
   
-  # compute financial year to join on
-  mutate(fy = as.character(paste0(year, "/", str_sub(year + 1, 3, 4)))) %>% 
-  
-  group_by(fy, pna_locality) %>% 
+  group_by(pna_locality) %>% 
   summarise(pop = sum(total)) %>% 
   ungroup
 
+
+# Pharmacies by locality
+pharm_rate_loc <- pharmacies %>% 
+  group_by(pna_locality) %>% 
+  count %>% 
+  ungroup %>% 
+  left_join(loc_pops) %>% 
+  select("area" = pna_locality, "n_pharm" = n, pop) 
+
+# Pharmacies by LA & SW
+pharm_rate_high_lvl <- tibble(area = "South West", n_pharm = n_pharm_sw)
+
+pharm_rate_high_lvl <- pharmacies %>% 
+  group_by(local_authority) %>% 
+  count %>% 
+  ungroup %>% 
+  rename("area" = local_authority, "n_pharm" = n) %>% 
+  bind_rows(pharm_rate_high_lvl) %>% 
+  left_join(pops_high_lvl, by = c("area" = "name")) %>% 
+  select(-code, -geography)
+
+# Bind areas and calculate rates
+pharm_rate <- pharm_rate_loc %>% 
+  bind_rows(pharm_rate_high_lvl) %>% 
+  
+  # calculate rates
+  mutate(rate_pharm = round_half_up(n_pharm/pop*100000, 1)) %>% 
+  
+  # add commas for large numbers
+  mutate_if(is.numeric, ~format(., big.mark = ",")) %>% 
+  mutate_all(~str_replace(., "NA", "-")) %>% 
+  
+  select("Area" = area,
+         "Population" = pop,
+         "Number of pharmacies" = n_pharm,
+         "Pharmacies per 100,000 population" = rate_pharm)
+
+
+
+## 2.3 Pharmacy dispensing data table ----
+
 # Aggregate data to locality level
+
 disp_data_loc <- disp_data %>%
   
-  # get number of pharmacies by month and locality
-  group_by(fy, month, pna_locality) %>% 
-  mutate(n_pharmacies = n()) %>% 
-  arrange(month) %>% 
-  
-  # get total items by financial year, and number of pharmacies in latest month
+  # get total items by locality and FY
   group_by(fy, pna_locality) %>% 
   summarise(n_items = sum(numberof_items),
             n_nms = sum(numberof_new_medicine_service_nms_interventionsdeclared),
-            n_pharmacies = last(n_pharmacies),
             n_months = last(month)) %>% 
   ungroup %>% 
+  
+  # keep only most recent complete year
+  filter(n_months == 12) %>% 
+  filter(fy == last(fy)) %>% 
   
   # add populations
   left_join(loc_pops) %>% 
   
-  # fill in populations with latest year where missing
-  arrange(fy) %>% 
-  group_by(pna_locality) %>% 
-  fill(pop, .direction = "down") %>% 
-  ungroup %>% 
-  
-  rename("area" = pna_locality) %>% 
-  
-  # label incomplete year of data
-  mutate(fy = if_else(n_months != 12,
-                      paste0(fy, " (", n_months, " months)"),
-                      fy)) %>% 
-  
-  mutate(pop = if_else(n_months != 12, NA, pop))
+  rename("area" = pna_locality)
 
 
 # Aggregate again for LAs (latest year only)
 disp_data_la <- disp_data %>%
   
-  # get number of pharmacies by month and locality
-  group_by(fy, month, local_authority) %>% 
-  mutate(n_pharmacies = n()) %>% 
-  arrange(month) %>% 
-  
-  # get total items in last FY and number of pharmacies in latest month
+  # get total items in last FY
   group_by(fy, local_authority) %>% 
   summarise(n_items = sum(numberof_items),
-            n_pharmacies = last(n_pharmacies),
             n_months = last(month)) %>% 
   ungroup %>% 
   rename("area" = local_authority) %>% 
@@ -403,18 +439,14 @@ disp_table <- disp_data_loc %>%
   bind_rows(disp_data_high_lvl) %>% 
   
   # calculate rates
-  mutate(rate_pharmacies = round_half_up(n_pharmacies/pop*100000, 1),
-         rate_items = round_half_up(n_items/pop, 1)) %>% 
+  mutate(rate_items = round_half_up(n_items/pop, 1)) %>% 
 
   # add commas for large numbers
   mutate_if(is.numeric, ~format(., big.mark = ",")) %>% 
   mutate_all(~str_replace(., "NA", "-")) %>% 
   
-  select("Financial Year" = fy,
-         "Area" = area,
+  select("Area" = area,
          "Population" = pop,
-         "Number of pharmacies in latest month of FY" = n_pharmacies,
-         "Pharmacies per 100,000 population" = rate_pharmacies,
          "Number of dispensed items" = n_items,
          "Items dispensed per head" = rate_items)
 
