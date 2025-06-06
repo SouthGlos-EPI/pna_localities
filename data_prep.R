@@ -32,7 +32,9 @@ high_lvl_pop_year <- 2023
 
 # number of pharmacies in the South West in the month of data specified above
 # provided by Les Riggs at NHS South West Collaborative Commissioning Hub
-n_pharm_sw <- 931
+# This number does NOT include DACs or DSPs
+# Number with DSPs is 919, and with DACs is 931.
+n_pharm_sw <- 900
 
 ## colour palette
 palette <- c("#1C1F63", "#10CFFB" , "#9EF101","#8605E4")
@@ -296,10 +298,28 @@ disp_prac_branch <- disp_prac %>%
   ungroup
 
 
+## Create a subset for community pharmacies vs DSPs/DACs
+dac_dsp <- pharmacies %>% 
+  filter(distance_selling == "Yes" | dac == "Yes") %>% 
+  
+  # join to locality
+  left_join(pc_lsoa_loc_lookup) %>% 
+  mutate_at(vars(dac, distance_selling), 
+            ~replace_na(if_else(. == "Yes", 1, 0), 0)) %>% 
+  
+  group_by(pna_locality) %>% 
+  summarise(dac = sum(dac),
+            distance_selling = sum(distance_selling)) %>% 
+  ungroup
+
+comm_pharms <- pharmacies %>% 
+  filter(distance_selling != "Yes",
+         dac != "Yes")
+
 ## Create a subset for national pharmacy chains
 # List of pharmacy chains provided by ChatGPT, may be more, check local data
 
-pharm_chains <- pharmacies %>% 
+pharm_chains <- comm_pharms %>% 
   filter(name %in%
            c("Boots Pharmacy", "Well Pharmacy", "Rowlands Pharmacy", "Day Lewis Pharmacy", 
              "Cohens Chemist", "Jhoots Pharmacy", "PillBox Chemists", "Tesco Pharmacy", 
@@ -311,31 +331,32 @@ pharm_chains <- pharmacies %>%
   arrange(desc(n))
 
 
-## Total pharmacies and types, adding dispensing practices
-pharm_types <- pharmacies %>% 
+## Total pharmacies and types, adding dispensing practices, DACs, and DSPs
+pharm_types <- comm_pharms %>% 
   
   # add in pharmacy ownership flags
   mutate(chain = if_else(name %in% pharm_chains$name, 1, 0),
          independ = if_else(chain == 1, 0, 1)) %>% 
   
   # convert "Yes" to 1 and "No"/NA to 0 for counting
-  mutate_at(vars(dac:appliance_usage_reviews, specialist_medicines_provider), 
+  mutate_at(vars(x40_hour_contract:appliance_usage_reviews, specialist_medicines_provider), 
             ~replace_na(if_else(. == "Yes", 1, 0), 0)) %>% 
   
   # add column for total and count
   mutate(total = 1) %>% 
   group_by(pna_locality) %>% 
-  summarise_at(vars(total, dac:appliance_usage_reviews, 
+  summarise_at(vars(total, x40_hour_contract:appliance_usage_reviews, 
                     specialist_medicines_provider, chain, independ), sum) %>% 
   ungroup %>% 
   
+  left_join(dac_dsp) %>% 
   left_join(disp_prac_main) %>% 
   left_join(disp_prac_branch) %>% 
   mutate_all(~replace_na(.,0))
 
 
 ## Subset for 100h pharmacies
-pharm_100h <- pharmacies %>%
+pharm_100h <- comm_pharms %>%
   filter(x100_hour_contract == "Yes") %>% 
   mutate(name_and_address = paste(name, 
                                   address,
@@ -355,7 +376,7 @@ loc_pops <- pops %>%
 
 
 # Pharmacies by locality
-pharm_rate_loc <- pharmacies %>% 
+pharm_rate_loc <- comm_pharms %>% 
   group_by(pna_locality) %>% 
   count %>% 
   ungroup %>% 
@@ -365,7 +386,7 @@ pharm_rate_loc <- pharmacies %>%
 # Pharmacies by LA & SW
 pharm_rate_high_lvl <- tibble(area = "South West", n_pharm = n_pharm_sw)
 
-pharm_rate_high_lvl <- pharmacies %>% 
+pharm_rate_high_lvl <- comm_pharms %>% 
   group_by(local_authority) %>% 
   count %>% 
   ungroup %>% 
@@ -456,7 +477,7 @@ disp_table <- disp_data_loc %>%
 ## 3) Access to essential services ----
 
 # Create table for plot
-pharm_hours <- pharmacies %>% 
+pharm_hours <- comm_pharms %>% 
   select(ods_code, pna_locality, opening_hours_monday:opening_hours_sunday) %>% 
   pivot_longer(opening_hours_monday:opening_hours_sunday, 
                names_to = "day_of_week",
